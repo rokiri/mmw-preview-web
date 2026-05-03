@@ -12,6 +12,8 @@ export type PreviewRuntimeConfig = {
   stageOpacity: number
   backgroundBrightness: number
   effectOpacity: number
+  bgmVolume: number
+  soundVolume: number
 }
 
 export type UrlPreviewParams = {

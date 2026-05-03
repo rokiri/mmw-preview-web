@@ -245,6 +245,8 @@ namespace
                 this.soundBuffers = new Map();
                 this.source = null;
                 this.gainNode = null;
+                this.bgmVolume = 1;
+                this.soundVolume = 1;
                 this.oneShots = new Set();
                 this.extendableSources = new Map();
                 this.state = 0;
@@ -346,6 +348,7 @@ namespace
                         if (!this.gainNode) {
                             this.gainNode = this.audioContext.createGain();
                         }
+                        this.gainNode.gain.value = this.bgmVolume;
                         source.connect(this.gainNode);
                         this.gainNode.connect(this.audioContext.destination);
                         source.onended = () => {
@@ -471,6 +474,23 @@ namespace
                 }
             }
 
+            setAudioVolumes(bgmVolume, soundVolume) {
+                this.bgmVolume = Math.min(1, Math.max(0, Number(bgmVolume)));
+                if (!Number.isFinite(this.bgmVolume)) {
+                    this.bgmVolume = 1;
+                }
+                this.soundVolume = Math.min(1, Math.max(0, Number(soundVolume)));
+                if (!Number.isFinite(this.soundVolume)) {
+                    this.soundVolume = 1;
+                }
+                if (this.gainNode) {
+                    this.gainNode.gain.value = this.bgmVolume;
+                }
+                for (const entry of this.extendableSources.values()) {
+                    entry.gainNode.gain.value = entry.baseGain * this.soundVolume;
+                }
+            }
+
             trigger(name, gain, delaySec) {
                 if (!name) {
                     return;
@@ -483,7 +503,7 @@ namespace
                 const source = context.createBufferSource();
                 const gainNode = context.createGain();
                 source.buffer = buffer;
-                gainNode.gain.value = Math.max(0, Number(gain) || 0);
+                gainNode.gain.value = Math.max(0, Number(gain) || 0) * this.soundVolume;
                 source.connect(gainNode);
                 gainNode.connect(context.destination);
                 source.onended = () => {
@@ -526,6 +546,7 @@ namespace
 
                 const source = context.createBufferSource();
                 const gainNode = context.createGain();
+                const baseGain = Math.max(0, Number(gain) || 0);
                 source.buffer = buffer;
                 source.loop = true;
                 if (buffer.length > 6000) {
@@ -534,7 +555,7 @@ namespace
                     source.loopEnd = (buffer.length - guardFrames) / buffer.sampleRate;
                 }
                 source.playbackRate.value = this.playbackRate;
-                gainNode.gain.value = Math.max(0, Number(gain) || 0);
+                gainNode.gain.value = baseGain * this.soundVolume;
                 source.connect(gainNode);
                 gainNode.connect(context.destination);
                 source.onended = () => {
@@ -551,6 +572,7 @@ namespace
                 this.extendableSources.set(name, {
                     source,
                     gainNode,
+                    baseGain,
                     endTimeSec: nextEndTimeSec,
                 });
             }
@@ -647,6 +669,11 @@ namespace
     EM_JS(void, jsAudioSetPlaybackRate, (double rate), {
         jsAudioEnsureEngine();
         Module.__mmwAudio.setPlaybackRate(rate);
+    });
+
+    EM_JS(void, jsAudioSetVolumes, (double bgmVolume, double soundVolume), {
+        jsAudioEnsureEngine();
+        Module.__mmwAudio.setAudioVolumes(bgmVolume, soundVolume);
     });
 
     EM_JS(void, jsAudioSetDuration, (double durationSec), {
@@ -3965,6 +3992,11 @@ extern "C"
     {
         gPlayer.playbackRate = std::max(0.05, playbackRate);
         jsAudioSetPlaybackRate(playbackRate);
+    }
+
+    EMSCRIPTEN_KEEPALIVE void setPlayerAudioVolumes(double bgmVolume, double soundVolume)
+    {
+        jsAudioSetVolumes(bgmVolume, soundVolume);
     }
 
     EMSCRIPTEN_KEEPALIVE void setPlayerPreviewConfig(

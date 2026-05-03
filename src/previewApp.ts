@@ -18,6 +18,8 @@ const defaultConfig: PreviewRuntimeConfig = {
   stageOpacity: 1,
   backgroundBrightness: 1,
   effectOpacity: 1,
+  bgmVolume: 1,
+  soundVolume: 1,
 }
 
 const MIN_CHART_LEAD_IN_MS = 9000
@@ -197,6 +199,26 @@ app.innerHTML = `
               <input id="background-brightness-input" type="range" min="60" max="100" step="1" value="100" />
               <output id="background-brightness-output">100%</output>
             </label>
+            <label class="alpha-control" aria-label="guideAlpha">
+              Guide 浓度
+              <input id="guide-alpha-input" type="range" min="0" max="100" step="1" value="50" />
+              <output id="guide-alpha-output">50%</output>
+            </label>
+            <label class="alpha-control" aria-label="holdAlpha">
+              长条透明度
+              <input id="hold-alpha-input" type="range" min="0" max="100" step="1" value="74" />
+              <output id="hold-alpha-output">74%</output>
+            </label>
+            <label class="audio-volume" aria-label="bgmVolume">
+              BGM 音量
+              <input id="bgm-volume-input" type="range" min="0" max="100" step="1" value="100" />
+              <output id="bgm-volume-output">100%</output>
+            </label>
+            <label class="audio-volume" aria-label="soundVolume">
+              音效音量
+              <input id="sound-volume-input" type="range" min="0" max="100" step="1" value="100" />
+              <output id="sound-volume-output">100%</output>
+            </label>
             <label class="compact-select" aria-label="noteSkin">
               Note Skin
               <select id="note-skin-select">
@@ -339,6 +361,14 @@ const noteSpeedPlusPointOneButton = app.querySelector<HTMLButtonElement>('#note-
 const noteSpeedPlusOneButton = app.querySelector<HTMLButtonElement>('#note-speed-plus-one-button')!
 const backgroundBrightnessInput = app.querySelector<HTMLInputElement>('#background-brightness-input')!
 const backgroundBrightnessOutput = app.querySelector<HTMLOutputElement>('#background-brightness-output')!
+const guideAlphaInput = app.querySelector<HTMLInputElement>('#guide-alpha-input')!
+const guideAlphaOutput = app.querySelector<HTMLOutputElement>('#guide-alpha-output')!
+const holdAlphaInput = app.querySelector<HTMLInputElement>('#hold-alpha-input')!
+const holdAlphaOutput = app.querySelector<HTMLOutputElement>('#hold-alpha-output')!
+const bgmVolumeInput = app.querySelector<HTMLInputElement>('#bgm-volume-input')!
+const bgmVolumeOutput = app.querySelector<HTMLOutputElement>('#bgm-volume-output')!
+const soundVolumeInput = app.querySelector<HTMLInputElement>('#sound-volume-input')!
+const soundVolumeOutput = app.querySelector<HTMLOutputElement>('#sound-volume-output')!
 const noteSkinSelect = app.querySelector<HTMLSelectElement>('#note-skin-select')!
 const stageCoverInput = app.querySelector<HTMLInputElement>('#stage-cover-input')!
 const stageCoverOutput = app.querySelector<HTMLOutputElement>('#stage-cover-output')!
@@ -496,6 +526,8 @@ function readStoredPreviewConfig() {
       stageOpacity: defaultConfig.stageOpacity,
       backgroundBrightness: clampNumber(parsed.backgroundBrightness, defaultConfig.backgroundBrightness, 0.6, 1),
       effectOpacity: defaultConfig.effectOpacity,
+      bgmVolume: clampNumber(parsed.bgmVolume, defaultConfig.bgmVolume, 0, 1),
+      soundVolume: clampNumber(parsed.soundVolume, defaultConfig.soundVolume, 0, 1),
     } satisfies PreviewRuntimeConfig
   } catch {
     return { ...defaultConfig }
@@ -1207,6 +1239,7 @@ async function loadPreparedPreview(
     metadata: getSessionMetadata(params),
   })
   player.setPreviewConfig(currentConfig)
+  player.setAudioVolumes(currentConfig.bgmVolume, currentConfig.soundVolume)
   player.seek(0)
   player.pause()
   player.renderFrame()
@@ -1816,6 +1849,62 @@ function applyBackgroundBrightness(percent: number) {
   }
 }
 
+function applyGuideAlpha(percent: number) {
+  const clampedPercent = Math.min(100, Math.max(0, Math.round(percent)))
+  currentConfig = {
+    ...currentConfig,
+    guideAlpha: clampedPercent / 100,
+  }
+  guideAlphaInput.value = String(clampedPercent)
+  guideAlphaOutput.value = `${clampedPercent}%`
+  persistPreviewConfig()
+  if (runtimeReady) {
+    player.setPreviewConfig(currentConfig)
+  }
+}
+
+function applyHoldAlpha(percent: number) {
+  const clampedPercent = Math.min(100, Math.max(0, Math.round(percent)))
+  currentConfig = {
+    ...currentConfig,
+    holdAlpha: clampedPercent / 100,
+  }
+  holdAlphaInput.value = String(clampedPercent)
+  holdAlphaOutput.value = `${clampedPercent}%`
+  persistPreviewConfig()
+  if (runtimeReady) {
+    player.setPreviewConfig(currentConfig)
+  }
+}
+
+function applyBgmVolume(percent: number) {
+  const clampedPercent = Math.min(100, Math.max(0, Math.round(percent)))
+  currentConfig = {
+    ...currentConfig,
+    bgmVolume: clampedPercent / 100,
+  }
+  bgmVolumeInput.value = String(clampedPercent)
+  bgmVolumeOutput.value = `${clampedPercent}%`
+  persistPreviewConfig()
+  if (runtimeReady) {
+    player.setAudioVolumes(currentConfig.bgmVolume, currentConfig.soundVolume)
+  }
+}
+
+function applySoundVolume(percent: number) {
+  const clampedPercent = Math.min(100, Math.max(0, Math.round(percent)))
+  currentConfig = {
+    ...currentConfig,
+    soundVolume: clampedPercent / 100,
+  }
+  soundVolumeInput.value = String(clampedPercent)
+  soundVolumeOutput.value = `${clampedPercent}%`
+  persistPreviewConfig()
+  if (runtimeReady) {
+    player.setAudioVolumes(currentConfig.bgmVolume, currentConfig.soundVolume)
+  }
+}
+
 function applyNoteSkin(nextSkin: number) {
   const clampedSkin = nextSkin === 1 ? 1 : 0
   currentConfig = {
@@ -1902,6 +1991,7 @@ async function bootstrap() {
       // ignore storage failures
     }
     player.setPreviewConfig(currentConfig)
+    player.setAudioVolumes(currentConfig.bgmVolume, currentConfig.soundVolume)
     runtimeReady = true
     resizeObserver.observe(previewPanel)
     applyRenderSize()
@@ -2064,6 +2154,22 @@ backgroundBrightnessInput.addEventListener('input', () => {
   applyBackgroundBrightness(Number(backgroundBrightnessInput.value))
 })
 
+guideAlphaInput.addEventListener('input', () => {
+  applyGuideAlpha(Number(guideAlphaInput.value))
+})
+
+holdAlphaInput.addEventListener('input', () => {
+  applyHoldAlpha(Number(holdAlphaInput.value))
+})
+
+bgmVolumeInput.addEventListener('input', () => {
+  applyBgmVolume(Number(bgmVolumeInput.value))
+})
+
+soundVolumeInput.addEventListener('input', () => {
+  applySoundVolume(Number(soundVolumeInput.value))
+})
+
 noteSkinSelect.addEventListener('change', () => {
   applyNoteSkin(Number(noteSkinSelect.value))
 })
@@ -2186,6 +2292,10 @@ try {
 }
 applyNoteSpeed(currentConfig.noteSpeed)
 applyBackgroundBrightness(currentConfig.backgroundBrightness * 100)
+applyGuideAlpha(currentConfig.guideAlpha * 100)
+applyHoldAlpha(currentConfig.holdAlpha * 100)
+applyBgmVolume(currentConfig.bgmVolume * 100)
+applySoundVolume(currentConfig.soundVolume * 100)
 applyNoteSkin(currentConfig.noteSkin)
 applyStageCover(currentConfig.stageCover * 100)
 applyMirror(currentConfig.mirror)

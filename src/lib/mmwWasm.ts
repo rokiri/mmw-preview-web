@@ -229,6 +229,10 @@ export class MmwWasmPlayer {
     this.assertReady().ccall('setPlayerPlaybackRate', null, ['number'], [rate])
   }
 
+  setAudioVolumes(bgmVolume: number, soundVolume: number) {
+    this.assertReady().ccall('setPlayerAudioVolumes', null, ['number', 'number'], [bgmVolume, soundVolume])
+  }
+
   resize(width: number, height: number, dpr: number) {
     this.assertReady().ccall(
       'resizePlayer',

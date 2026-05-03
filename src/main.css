@@ -1154,6 +1154,16 @@ input[type="range"] {
   gap: 8px;
 }
 
+.alpha-control {
+  min-width: 0;
+  gap: 8px;
+}
+
+.audio-volume {
+  min-width: 0;
+  gap: 8px;
+}
+
 .compact-select {
   min-width: 0;
   gap: 8px;
@@ -1180,6 +1190,18 @@ input[type="range"] {
   margin: 0;
 }
 
+.alpha-control input[type='range'] {
+  width: 136px;
+  min-width: 112px;
+  margin: 0;
+}
+
+.audio-volume input[type='range'] {
+  width: 136px;
+  min-width: 112px;
+  margin: 0;
+}
+
 .controls button,
 .controls select,
 .controls input,
@@ -1191,6 +1213,22 @@ input[type="range"] {
 }
 
 .background-brightness output {
+  min-width: 4ch;
+  text-align: right;
+  color: rgba(233, 243, 251, 0.92);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+.alpha-control output {
+  min-width: 4ch;
+  text-align: right;
+  color: rgba(233, 243, 251, 0.92);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+.audio-volume output {
   min-width: 4ch;
   text-align: right;
   color: rgba(233, 243, 251, 0.92);
@@ -1386,6 +1424,18 @@ input[type="range"] {
     flex-wrap: wrap;
   }
 
+  .alpha-control {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .audio-volume {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
   .compact-select,
   .stage-cover {
     width: 100%;
@@ -1394,6 +1444,18 @@ input[type="range"] {
   }
 
   .background-brightness input[type='range'] {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 140px;
+  }
+
+  .alpha-control input[type='range'] {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 140px;
+  }
+
+  .audio-volume input[type='range'] {
     width: auto;
     min-width: 0;
     flex: 1 1 140px;
