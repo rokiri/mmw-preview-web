@@ -497,6 +497,11 @@ type DownloadProgressState = {
   totalItems: number
 }
 
+type FetchArrayBufferResult = {
+  buffer: ArrayBuffer
+  cacheHit: boolean
+}
+
 function clampNumber(value: unknown, fallback: number, min: number, max: number) {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     return fallback
@@ -906,6 +911,28 @@ async function fetchText(url: string) {
   return response.text()
 }
 
+async function readCachedArrayBuffer(url: string) {
+  if (typeof window === 'undefined' || !('caches' in window)) {
+    return null
+  }
+
+  try {
+    const resolvedUrl = new URL(url, window.location.href)
+    if (resolvedUrl.origin !== window.location.origin) {
+      return null
+    }
+
+    const response = await caches.match(resolvedUrl.href)
+      ?? await caches.match(resolvedUrl.href, { ignoreSearch: true })
+    if (!response?.ok) {
+      return null
+    }
+    return response.arrayBuffer()
+  } catch {
+    return null
+  }
+}
+
 async function readArrayBufferResponse(
   url: string,
   response: Response,
@@ -954,7 +981,12 @@ async function readArrayBufferResponse(
   return out.buffer
 }
 
-async function fetchArrayBuffer(url: string, timeoutMs: number, onProgress?: (loaded: number, total: number) => void) {
+async function fetchArrayBufferWithSource(url: string, timeoutMs: number, onProgress?: (loaded: number, total: number) => void): Promise<FetchArrayBufferResult> {
+  const cachedBuffer = await readCachedArrayBuffer(url)
+  if (cachedBuffer) {
+    return { buffer: cachedBuffer, cacheHit: true }
+  }
+
   const controller = new AbortController()
   const timer = window.setTimeout(() => controller.abort(), timeoutMs)
   try {
@@ -962,10 +994,17 @@ async function fetchArrayBuffer(url: string, timeoutMs: number, onProgress?: (lo
     if (!response.ok) {
       throw new Error(`Failed to fetch resource: ${response.status} ${response.statusText}`)
     }
-    return readArrayBufferResponse(url, response, onProgress)
+    return {
+      buffer: await readArrayBufferResponse(url, response, onProgress),
+      cacheHit: false,
+    }
   } finally {
     window.clearTimeout(timer)
   }
+}
+
+async function fetchArrayBuffer(url: string, timeoutMs: number, onProgress?: (loaded: number, total: number) => void) {
+  return (await fetchArrayBufferWithSource(url, timeoutMs, onProgress)).buffer
 }
 
 function toBytes(buffer: ArrayBuffer) {
@@ -1027,9 +1066,12 @@ async function ensureStaticResourcesLoaded() {
     }
 
     const loadEntry = async (entry: (typeof entries)[number]) => {
-      const bytes = toBytes(await fetchArrayBuffer(entry.url, FETCH_TIMEOUT_MS, (loaded, total) => updateProgress(entry.label, entry.url, loaded, total)))
+      const result = await fetchArrayBufferWithSource(entry.url, FETCH_TIMEOUT_MS, (loaded, total) => updateProgress(entry.label, entry.url, loaded, total))
+      const bytes = toBytes(result.buffer)
       completedItems += 1
-      updateProgress(entry.label, entry.url, bytes.byteLength, bytes.byteLength)
+      if (!result.cacheHit) {
+        updateProgress(entry.label, entry.url, bytes.byteLength, bytes.byteLength)
+      }
       if (entry.kind === 'asset') {
         await player.preloadAsset(entry.key, bytes)
         return
