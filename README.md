@@ -6,6 +6,9 @@ Project SEKAI 风格 SUS 预览器（Web 版）。
 
 支持纯 wasm 渲染的谱面与 Overlay HUD（分数/血量/combo/PERFECT/开场信息卡）、Web AP 结尾演出、本地文件上传与 PWA 缓存。
 
+## ToDo
+- Dynamic stage preview
+
 ## 页面路由
 
 - `/`：主页
